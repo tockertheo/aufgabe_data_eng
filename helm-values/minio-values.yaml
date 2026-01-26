@@ -29,10 +29,9 @@ args:
   - server
   - /bitnami/minio/data
   - "--address=:9000"
-  - "--console-address=:9001"
 
 console:
-  enabled: true
+  enabled: flase
 
 
 
