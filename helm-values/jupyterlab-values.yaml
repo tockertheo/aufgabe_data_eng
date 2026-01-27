@@ -43,17 +43,7 @@ singleuser:
           name: minio
           key: root-password
 
-    GIT_USERNAME:
-      valueFrom:
-        secretKeyRef:
-          name: github-git-credentials
-          key: GIT_USERNAME
 
-    GIT_TOKEN:
-      valueFrom:
-        secretKeyRef:
-          name: github-git-credentials
-          key: GIT_TOKEN
 
     MLFLOW_S3_ENDPOINT_URL: "http://minio.data-storage.svc.cluster.local:9000"
 
