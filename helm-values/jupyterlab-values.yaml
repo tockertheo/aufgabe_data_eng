@@ -1,3 +1,4 @@
+
 hub:
   db:
     type: sqlite-pvc
@@ -16,13 +17,6 @@ singleuser:
     name: ghcr.io/marius2311/jupyterlab-ml
     tag: "1.0.2"
 
-  cmd:
-    - "sh"
-    - "-c"
-    - |
-      pip install --no-cache-dir --upgrade jupyterhub==5.4.3
-      exec jupyterhub-singleuser
-
   storage:
     type: dynamic
     dynamic:
@@ -36,7 +30,6 @@ singleuser:
     guarantee: 512M
     limit: 1G
 
-
   extraEnv:
     AWS_ACCESS_KEY_ID:
       valueFrom:
@@ -49,6 +42,18 @@ singleuser:
         secretKeyRef:
           name: minio
           key: root-password
+
+    GIT_USERNAME:
+      valueFrom:
+        secretKeyRef:
+          name: github-git-credentials
+          key: GIT_USERNAME
+
+    GIT_TOKEN:
+      valueFrom:
+        secretKeyRef:
+          name: github-git-credentials
+          key: GIT_TOKEN
 
     MLFLOW_S3_ENDPOINT_URL: "http://minio.data-storage.svc.cluster.local:9000"
 
@@ -83,3 +88,5 @@ ingress:
     - hosts:
         - jupyterlab.group-copm.dski23a.timebertt.dev
       secretName: jupyterlab-tls
+
+  
