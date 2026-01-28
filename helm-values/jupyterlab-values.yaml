@@ -14,13 +14,13 @@ proxy:
 singleuser:
   image:
     name: ghcr.io/marius2311/jupyterlab-ml
-    tag: "1.1.0"
+    tag: "1.0.2"
 
   cmd:
     - "sh"
     - "-c"
     - |
-      pip install --no-cache-dir --upgrade jupyterhub-singleuser==5.4.3
+      pip install --no-cache-dir --upgrade jupyterhub==5.4.3
       exec jupyterhub-singleuser
 
   storage:
