@@ -1,4 +1,3 @@
-
 hub:
   db:
     type: sqlite-pvc
@@ -16,9 +15,6 @@ singleuser:
   image:
     name: ghcr.io/marius2311/jupyterlab-ml
     tag: "1.1.0"
-  
-  extraPipPackages:
-    - jupytherhub == 5.4.3
 
   storage:
     type: dynamic
@@ -33,6 +29,15 @@ singleuser:
     guarantee: 512M
     limit: 1G
 
+  # Füge den lifecycleHook hinzu, um JupyterHub zu upgraden
+  lifecycleHooks:
+    postStart:
+      exec:
+        command:
+          - "sh"
+          - "-c"
+          - "pip install --no-cache-dir --upgrade jupyterhub==5.4.3"
+
   extraEnv:
     AWS_ACCESS_KEY_ID:
       valueFrom:
@@ -45,8 +50,6 @@ singleuser:
         secretKeyRef:
           name: minio
           key: root-password
-
-
 
     MLFLOW_S3_ENDPOINT_URL: "http://minio.data-storage.svc.cluster.local:9000"
 
@@ -81,5 +84,3 @@ ingress:
     - hosts:
         - jupyterlab.group-copm.dski23a.timebertt.dev
       secretName: jupyterlab-tls
-
-  
