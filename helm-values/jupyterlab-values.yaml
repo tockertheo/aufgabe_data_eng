@@ -19,8 +19,8 @@ prePuller:
 
 singleuser:
   image:
-    name: ghcr.io/marius2311/jupyterlab-ml
-    tag: "1.0.2"
+    name: quay.io/jupyterhub/k8s-singleuser-sample
+    tag: "4.3.2"
 
   storage:
     type: dynamic
