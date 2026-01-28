@@ -1,4 +1,3 @@
-
 hub:
   db:
     type: sqlite-pvc
@@ -11,6 +10,12 @@ hub:
 proxy:
   service:
     type: ClusterIP
+
+prePuller:
+  hook:
+    enabled: false
+  continuous:
+    enabled: true
 
 singleuser:
   image:
@@ -88,5 +93,3 @@ ingress:
     - hosts:
         - jupyterlab.group-copm.dski23a.timebertt.dev
       secretName: jupyterlab-tls
-
-  
