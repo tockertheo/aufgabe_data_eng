@@ -16,6 +16,13 @@ singleuser:
     name: ghcr.io/marius2311/jupyterlab-ml
     tag: "1.1.0"
 
+  cmd:
+    - "sh"
+    - "-c"
+    - |
+      pip install --no-cache-dir --upgrade jupyterhub==5.4.3
+      exec jupyterhub-singleuser
+
   storage:
     type: dynamic
     dynamic:
@@ -29,14 +36,6 @@ singleuser:
     guarantee: 512M
     limit: 1G
 
-  # Füge den lifecycleHook hinzu, um JupyterHub zu upgraden
-  lifecycleHooks:
-    postStart:
-      exec:
-        command:
-          - "sh"
-          - "-c"
-          - "pip install --no-cache-dir --upgrade jupyterhub==5.4.3"
 
   extraEnv:
     AWS_ACCESS_KEY_ID:
