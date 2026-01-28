@@ -16,6 +16,9 @@ singleuser:
   image:
     name: ghcr.io/marius2311/jupyterlab-ml
     tag: "1.1.0"
+  
+  extraPipPackages:
+    - jupytherhub == 5.4.3
 
   storage:
     type: dynamic
