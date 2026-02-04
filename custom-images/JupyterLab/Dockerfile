@@ -6,6 +6,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 USER jovyan
+
 RUN pip install --no-cache-dir jupyterlab-git
 RUN git config --global credential.helper store
 
