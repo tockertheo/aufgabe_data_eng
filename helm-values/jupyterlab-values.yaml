@@ -19,8 +19,8 @@ prePuller:
 
 singleuser:
   image:
-    name: quay.io/jupyterhub/k8s-singleuser-sample
-    tag: "3.3.7"
+    name: quay.io/jupyterhub/singleuser
+    tag: "4.1.5"
 
   storage:
     type: dynamic
