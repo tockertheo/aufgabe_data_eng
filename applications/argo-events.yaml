@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-events
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+
+  sources:
+  - repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-events
+    targetRevision: 2.4.20
+    helm:
+      valueFiles:
+        - $values/helm-values/argo-events-values.yaml
+      timeout: 300
+  - repoURL: https://github.com/tockertheo/aufgabe_data_eng/
+    targetRevision: main
+    ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-events
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

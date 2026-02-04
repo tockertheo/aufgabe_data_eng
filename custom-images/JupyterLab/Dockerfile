@@ -1,4 +1,4 @@
-FROM jupyter/base-notebook:lab-5.4.3
+FROM jupyter/base-notebook:lab-4.0.5
 
 USER root
 RUN apt-get update \
