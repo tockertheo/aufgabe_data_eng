@@ -1,0 +1,54 @@
+fullnameOverride: argo-events
+
+crds:
+  install: true
+  keep: true
+
+controller:
+  name: controller-manager
+  replicas: 1
+  image:
+    pullPolicy: IfNotPresent
+  rbac:
+    enabled: true
+    namespaced: false
+  serviceAccountName:
+    create: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  logFormat: text
+
+extraObjects:
+  - apiVersion: argoproj.io/v1alpha1
+    kind: EventBus
+    metadata:
+      name: default
+    spec:
+      nats:
+        native:
+          # Optional, defaults to 3. If it is < 3, set it to 3, that is the minimal requirement.
+          replicas: 3
+          # Optional, authen strategy, "none" or "token", defaults to "none"
+          auth: none
+    #      containerTemplate:
+    #        resources:
+    #          requests:
+    #            cpu: "10m"
+    #      metricsContainerTemplate:
+    #        resources:
+    #          requests:
+    #            cpu: "10m"
+    #      antiAffinity: false
+    #      persistence:
+    #        storageClassName: standard
+    #        accessMode: ReadWriteOnce
+    #        volumeSize: 10Gi
+
+webhook:
+  enabled: true
+  name: webhook-server

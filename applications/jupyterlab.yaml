@@ -14,7 +14,7 @@ spec:
       valueFiles:
         - $values/helm-values/jupyterlab-values.yaml
       timeout: 300
-  - repoURL: https://github.com/tockertheo/aufgabe_data_eng
+  - repoURL: https://github.com/tockertheo/aufgabe_data_eng/
     targetRevision: main
     ref: values
     
