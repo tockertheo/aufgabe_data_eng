@@ -17,6 +17,14 @@ singleuser:
     name: ghcr.io/marius2311/jupyterlab-ml
     tag: "1.0.2"
 
+  lifecycleHooks:
+    postStart:
+      exec:
+        command:
+          - "sh"
+          - "-lc"
+          - "pip install --no-cache-dir 'jupyterhub==5.4.3'"
+
   storage:
     type: dynamic
     dynamic:
