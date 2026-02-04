@@ -7,4 +7,4 @@ if [ -n "$GIT_USERNAME" ] && [ -n "$GIT_TOKEN" ]; then
 fi
 
 # Hand over to the original Jupyter entrypoint
-exec "$@"
+exec "$@"F
