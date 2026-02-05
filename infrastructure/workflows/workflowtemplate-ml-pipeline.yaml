@@ -21,13 +21,13 @@ spec:
 
       # dirs produced/consumed by scripts (persisted via Argo artifacts)
       - name: eda-out-dir
-        value: "artifacts/eda"
+        value: "/app/artifacts/eda"
       - name: preprocess-out-dir
-        value: "artifacts/preprocess"
+        value: "/app/artifacts/preprocess"
       - name: model-out-dir
-        value: "artifacts/model"
+        value: "/app/artifacts/model"
       - name: eval-out-dir
-        value: "artifacts/eval"
+        value: "/app/artifacts/eval"
 
       # preprocessing params
       - name: test-size
@@ -95,7 +95,6 @@ spec:
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
               - name: preprocess_art
                 from: "{{steps.preprocess.outputs.artifacts.preprocess_out}}"
-                path: "{{workflow.parameters.preprocess-out-dir}}"
             parameters:
               - name: preprocess-dir
                 value: "{{workflow.parameters.preprocess-out-dir}}"
@@ -114,10 +113,8 @@ spec:
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
               - name: preprocess_art
                 from: "{{steps.preprocess.outputs.artifacts.preprocess_out}}"
-                path: "{{workflow.parameters.preprocess-out-dir}}"
               - name: model_art
                 from: "{{steps.train.outputs.artifacts.model_out}}"
-                path: "{{workflow.parameters.model-out-dir}}"
             parameters:
               - name: preprocess-dir
                 value: "{{workflow.parameters.preprocess-out-dir}}"
