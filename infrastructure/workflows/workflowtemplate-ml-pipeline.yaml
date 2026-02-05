@@ -9,20 +9,17 @@ spec:
 
   arguments:
     parameters:
-      - name: experiment-name-mlflow
-        value: "argo-wf-pipeline"
-
       # MinIO input
       - name: bucket-name
         value: "input-data"
       - name: filename
         value: "weatherAUS.csv"
 
-      # local paths inside container
+      # local dataset path INSIDE container
       - name: local-data-path
         value: "/tmp/data/weatherAUS.csv"
 
-      # artifact dirs (persisted via Argo artifacts between steps)
+      # dirs produced/consumed by scripts (persisted via Argo artifacts)
       - name: eda-out-dir
         value: "artifacts/eda"
       - name: preprocess-out-dir
@@ -47,7 +44,7 @@ spec:
   templates:
 
   # =========================================================
-  # Pipeline definition
+  # Pipeline definition (DAG via steps)
   # =========================================================
   - name: pipeline
     steps:
@@ -63,86 +60,74 @@ spec:
                 value: "{{workflow.parameters.local-data-path}}"
 
       - - name: eda
-          template: run-script-with-output-dir
+          template: eda-step
           arguments:
             artifacts:
               - name: dataset
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
             parameters:
-              - name: script
-                value: exploratory_data_analysis.py
+              - name: data-path
+                value: "{{workflow.parameters.local-data-path}}"
               - name: out-dir
                 value: "{{workflow.parameters.eda-out-dir}}"
-              - name: cli-args
-                value: >-
-                  --data-path {{workflow.parameters.local-data-path}}
-                  --out-dir {{workflow.parameters.eda-out-dir}}
 
       - - name: preprocess
-          template: run-script-with-output-dir
+          template: preprocess-step
           arguments:
             artifacts:
               - name: dataset
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
             parameters:
-              - name: script
-                value: preprocessing.py
+              - name: data-path
+                value: "{{workflow.parameters.local-data-path}}"
               - name: out-dir
                 value: "{{workflow.parameters.preprocess-out-dir}}"
-              - name: cli-args
-                value: >-
-                  --data-path {{workflow.parameters.local-data-path}}
-                  --out-dir {{workflow.parameters.preprocess-out-dir}}
-                  --test-size {{workflow.parameters.test-size}}
-                  --random-state {{workflow.parameters.random-state}}
+              - name: test-size
+                value: "{{workflow.parameters.test-size}}"
+              - name: random-state
+                value: "{{workflow.parameters.random-state}}"
 
       - - name: train
-          template: run-script-with-output-dir
+          template: train-step
           arguments:
             artifacts:
               - name: dataset
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
-              # bring preprocess artifacts back into the expected directory
-              - name: input-preprocess
-                from: "{{steps.preprocess.outputs.artifacts.out}}"
+              - name: preprocess_art
+                from: "{{steps.preprocess.outputs.artifacts.preprocess_out}}"
                 path: "{{workflow.parameters.preprocess-out-dir}}"
             parameters:
-              - name: script
-                value: train.py
+              - name: preprocess-dir
+                value: "{{workflow.parameters.preprocess-out-dir}}"
               - name: out-dir
                 value: "{{workflow.parameters.model-out-dir}}"
-              - name: cli-args
-                value: >-
-                  --preprocess-dir {{workflow.parameters.preprocess-out-dir}}
-                  --out-dir {{workflow.parameters.model-out-dir}}
-                  --experiment {{workflow.parameters.mlflow-experiment}}
-                  --run-name {{workflow.parameters.train-run-name}}
+              - name: experiment
+                value: "{{workflow.parameters.mlflow-experiment}}"
+              - name: run-name
+                value: "{{workflow.parameters.train-run-name}}"
 
       - - name: evaluate
-          template: run-script-with-output-dir
+          template: eval-step
           arguments:
             artifacts:
               - name: dataset
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
-              - name: input-preprocess
-                from: "{{steps.preprocess.outputs.artifacts.out}}"
+              - name: preprocess_art
+                from: "{{steps.preprocess.outputs.artifacts.preprocess_out}}"
                 path: "{{workflow.parameters.preprocess-out-dir}}"
-              - name: input-model
-                from: "{{steps.train.outputs.artifacts.out}}"
+              - name: model_art
+                from: "{{steps.train.outputs.artifacts.model_out}}"
                 path: "{{workflow.parameters.model-out-dir}}"
             parameters:
-              - name: script
-                value: evaluation.py
+              - name: preprocess-dir
+                value: "{{workflow.parameters.preprocess-out-dir}}"
+              - name: model-path
+                value: "{{workflow.parameters.model-out-dir}}/model.joblib"
               - name: out-dir
                 value: "{{workflow.parameters.eval-out-dir}}"
-              - name: cli-args
-                value: >-
-                  --preprocess-dir {{workflow.parameters.preprocess-out-dir}}
-                  --model-path {{workflow.parameters.model-out-dir}}/model.joblib
-                  --out-dir {{workflow.parameters.eval-out-dir}}
 
   # =========================================================
-  # Fetch step (MinIO S3 -> local file) + output dataset artifact
+  # Fetch from MinIO (S3) -> writes local file -> outputs dataset artifact
   # =========================================================
   - name: fetch-from-minio
     inputs:
@@ -158,12 +143,11 @@ spec:
           set -euo pipefail
           mkdir -p "$(dirname {{inputs.parameters.local-data-path}})"
           python - << 'PY'
-          import os
-          import boto3
+          import os, boto3
 
-          bucket = os.environ.get("BUCKET_NAME")
-          key    = os.environ.get("FILENAME")
-          out    = os.environ.get("LOCAL_DATA_PATH")
+          bucket = os.environ["BUCKET_NAME"]
+          key    = os.environ["FILENAME"]
+          out    = os.environ["LOCAL_DATA_PATH"]
 
           s3 = boto3.client(
               "s3",
@@ -186,22 +170,12 @@ spec:
         - name: LOCAL_DATA_PATH
           value: "{{inputs.parameters.local-data-path}}"
 
-        # keep endpoints/secrets exactly as before
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
-            secretKeyRef:
-              name: minio
-              key: root-user
+            secretKeyRef: { name: minio, key: root-user }
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
-            secretKeyRef:
-              name: minio
-              key: root-password
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: postgres-admin
-              key: postgres-user
+            secretKeyRef: { name: minio, key: root-password }
 
         - name: AWS_ENDPOINT_URL
           value: http://minio.data-storage.svc.cluster.local:9000
@@ -210,11 +184,12 @@ spec:
         - name: AWS_S3_ADDRESSING_STYLE
           value: path
 
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-user }
         - name: POSTGRES_PASSWORD
           valueFrom:
-            secretKeyRef:
-              name: postgres-admin
-              key: postgres-password
+            secretKeyRef: { name: postgres-admin, key: postgres-password }
 
     outputs:
       artifacts:
@@ -222,13 +197,12 @@ spec:
           path: "{{inputs.parameters.local-data-path}}"
 
   # =========================================================
-  # Script runner that ALSO returns an output directory as artifact
+  # EDA step: consumes dataset artifact, outputs eda directory artifact
   # =========================================================
-  - name: run-script-with-output-dir
+  - name: eda-step
     inputs:
       parameters:
-        - name: script
-        - name: cli-args
+        - name: data-path
         - name: out-dir
       artifacts:
         - name: dataset
@@ -239,36 +213,169 @@ spec:
       args:
         - |
           set -euo pipefail
-          python {{inputs.parameters.script}} {{inputs.parameters.cli-args}}
-          # Helpful listing for debugging (optional)
-          echo "[INFO] Contents of {{inputs.parameters.out-dir}}:"
-          ls -la "{{inputs.parameters.out-dir}}" || true
+          python exploratory_data_analysis.py \
+            --data-path {{inputs.parameters.data-path}} \
+            --out-dir {{inputs.parameters.out-dir}}
+          ls -la {{inputs.parameters.out-dir}} || true
       envFrom:
         - configMapRef:
             name: mlops-runtime-config
       env:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
-            secretKeyRef:
-              name: minio
-              key: root-user
+            secretKeyRef: { name: minio, key: root-user }
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
-            secretKeyRef:
-              name: minio
-              key: root-password
+            secretKeyRef: { name: minio, key: root-password }
         - name: POSTGRES_USER
           valueFrom:
-            secretKeyRef:
-              name: postgres-admin
-              key: postgres-user
+            secretKeyRef: { name: postgres-admin, key: postgres-user }
         - name: POSTGRES_PASSWORD
           valueFrom:
-            secretKeyRef:
-              name: postgres-admin
-              key: postgres-password
-
+            secretKeyRef: { name: postgres-admin, key: postgres-password }
     outputs:
       artifacts:
-        - name: out
+        - name: eda_out
+          path: "{{inputs.parameters.out-dir}}"
+
+  # =========================================================
+  # Preprocess step: consumes dataset artifact, outputs preprocess directory artifact
+  # =========================================================
+  - name: preprocess-step
+    inputs:
+      parameters:
+        - name: data-path
+        - name: out-dir
+        - name: test-size
+        - name: random-state
+      artifacts:
+        - name: dataset
+          path: "{{workflow.parameters.local-data-path}}"
+    container:
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      command: ["bash", "-c"]
+      args:
+        - |
+          set -euo pipefail
+          python preprocessing.py \
+            --data-path {{inputs.parameters.data-path}} \
+            --out-dir {{inputs.parameters.out-dir}} \
+            --test-size {{inputs.parameters.test-size}} \
+            --random-state {{inputs.parameters.random-state}}
+          ls -la {{inputs.parameters.out-dir}} || true
+      envFrom:
+        - configMapRef:
+            name: mlops-runtime-config
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef: { name: minio, key: root-user }
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef: { name: minio, key: root-password }
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-user }
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-password }
+    outputs:
+      artifacts:
+        - name: preprocess_out
+          path: "{{inputs.parameters.out-dir}}"
+
+  # =========================================================
+  # Train step: consumes preprocess artifact (mounted to preprocess-out-dir), outputs model dir artifact
+  # =========================================================
+  - name: train-step
+    inputs:
+      parameters:
+        - name: preprocess-dir
+        - name: out-dir
+        - name: experiment
+        - name: run-name
+      artifacts:
+        - name: dataset
+          path: "{{workflow.parameters.local-data-path}}"
+        - name: preprocess_art
+          path: "{{workflow.parameters.preprocess-out-dir}}"
+    container:
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      command: ["bash", "-c"]
+      args:
+        - |
+          set -euo pipefail
+          python train.py \
+            --preprocess-dir {{inputs.parameters.preprocess-dir}} \
+            --out-dir {{inputs.parameters.out-dir}} \
+            --experiment {{inputs.parameters.experiment}} \
+            --run-name {{inputs.parameters.run-name}}
+          ls -la {{inputs.parameters.out-dir}} || true
+      envFrom:
+        - configMapRef:
+            name: mlops-runtime-config
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef: { name: minio, key: root-user }
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef: { name: minio, key: root-password }
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-user }
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-password }
+    outputs:
+      artifacts:
+        - name: model_out
+          path: "{{inputs.parameters.out-dir}}"
+
+  # =========================================================
+  # Eval step: consumes preprocess + model artifacts, outputs eval dir artifact
+  # =========================================================
+  - name: eval-step
+    inputs:
+      parameters:
+        - name: preprocess-dir
+        - name: model-path
+        - name: out-dir
+      artifacts:
+        - name: dataset
+          path: "{{workflow.parameters.local-data-path}}"
+        - name: preprocess_art
+          path: "{{workflow.parameters.preprocess-out-dir}}"
+        - name: model_art
+          path: "{{workflow.parameters.model-out-dir}}"
+    container:
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      command: ["bash", "-c"]
+      args:
+        - |
+          set -euo pipefail
+          python evaluation.py \
+            --preprocess-dir {{inputs.parameters.preprocess-dir}} \
+            --model-path {{inputs.parameters.model-path}} \
+            --out-dir {{inputs.parameters.out-dir}}
+          ls -la {{inputs.parameters.out-dir}} || true
+      envFrom:
+        - configMapRef:
+            name: mlops-runtime-config
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef: { name: minio, key: root-user }
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef: { name: minio, key: root-password }
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-user }
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef: { name: postgres-admin, key: postgres-password }
+    outputs:
+      artifacts:
+        - name: eval_out
           path: "{{inputs.parameters.out-dir}}"
