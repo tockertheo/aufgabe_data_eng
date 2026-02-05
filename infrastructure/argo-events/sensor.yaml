@@ -14,7 +14,7 @@ spec:
         data:
           - path: notification.0.s3.object.key
             value:
-              - "weatherAUS.csv$"       
+              - "weatherAUS.csv"       
 
   triggers:
     - template:
