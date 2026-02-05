@@ -10,11 +10,11 @@ spec:
     - name: minio-dep
       eventSourceName: minio-input-eventsource
       eventName: input
-      filters:
-        data:
-          - path: notification.0.s3.object.key
-            value:
-              - "weatherAUS.csv"       
+      #filters:
+        #ädata:
+          #- path: notification.0.s3.object.key
+            #value:
+             # - "weatherAUS.csv"       
 
   triggers:
     - template:

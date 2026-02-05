@@ -121,7 +121,7 @@ spec:
         - name: filename
         - name: local-data-path
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.1
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.2
       command: ["bash", "-c"]
       args:
         - |
@@ -187,7 +187,7 @@ spec:
         - name: script
         - name: cli-args
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.1
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.2
       command: ["bash", "-c"]
       args:
         - python {{inputs.parameters.script}} {{inputs.parameters.cli-args}}
