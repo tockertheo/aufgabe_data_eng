@@ -65,6 +65,9 @@ spec:
       - - name: eda
           template: run-script
           arguments:
+            artifacts:
+              - name: dataset
+                from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
             parameters:
               - name: script
                 value: exploratory_data_analysis.py
@@ -76,6 +79,9 @@ spec:
       - - name: preprocess
           template: run-script
           arguments:
+            artifacts:
+              - name: dataset
+                from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
             parameters:
               - name: script
                 value: preprocessing.py
@@ -89,6 +95,9 @@ spec:
       - - name: train
           template: run-script
           arguments:
+            artifacts:
+              - name: dataset
+                from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
             parameters:
               - name: script
                 value: train.py
@@ -102,6 +111,9 @@ spec:
       - - name: evaluate
           template: run-script
           arguments:
+            artifacts:
+              - name: dataset
+                from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
             parameters:
               - name: script
                 value: evaluation.py
@@ -180,12 +192,16 @@ spec:
         - name: AWS_S3_ADDRESSING_STYLE
           value: path
 
-        
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: postgres-admin
               key: postgres-password
+
+    outputs:
+      artifacts:
+        - name: dataset
+          path: "{{inputs.parameters.local-data-path}}"
 
   # ----------------------
   # Base script runner (unchanged endpoints)
@@ -195,6 +211,9 @@ spec:
       parameters:
         - name: script
         - name: cli-args
+      artifacts:
+        - name: dataset
+          path: "{{workflow.parameters.local-data-path}}"
     container:
       image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
       command: ["bash", "-c"]
