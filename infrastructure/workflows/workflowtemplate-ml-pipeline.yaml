@@ -22,7 +22,7 @@ spec:
       - name: local-data-path
         value: "/tmp/data/weatherAUS.csv"
 
-      # artifact dirs (same across steps)
+      # artifact dirs (persisted via Argo artifacts between steps)
       - name: eda-out-dir
         value: "artifacts/eda"
       - name: preprocess-out-dir
@@ -46,9 +46,9 @@ spec:
 
   templates:
 
-  # ----------------------
+  # =========================================================
   # Pipeline definition
-  # ----------------------
+  # =========================================================
   - name: pipeline
     steps:
       - - name: fetch-data
@@ -63,7 +63,7 @@ spec:
                 value: "{{workflow.parameters.local-data-path}}"
 
       - - name: eda
-          template: run-script
+          template: run-script-with-output-dir
           arguments:
             artifacts:
               - name: dataset
@@ -71,13 +71,15 @@ spec:
             parameters:
               - name: script
                 value: exploratory_data_analysis.py
+              - name: out-dir
+                value: "{{workflow.parameters.eda-out-dir}}"
               - name: cli-args
                 value: >-
                   --data-path {{workflow.parameters.local-data-path}}
                   --out-dir {{workflow.parameters.eda-out-dir}}
 
       - - name: preprocess
-          template: run-script
+          template: run-script-with-output-dir
           arguments:
             artifacts:
               - name: dataset
@@ -85,6 +87,8 @@ spec:
             parameters:
               - name: script
                 value: preprocessing.py
+              - name: out-dir
+                value: "{{workflow.parameters.preprocess-out-dir}}"
               - name: cli-args
                 value: >-
                   --data-path {{workflow.parameters.local-data-path}}
@@ -93,14 +97,20 @@ spec:
                   --random-state {{workflow.parameters.random-state}}
 
       - - name: train
-          template: run-script
+          template: run-script-with-output-dir
           arguments:
             artifacts:
               - name: dataset
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
+              # bring preprocess artifacts back into the expected directory
+              - name: input-preprocess
+                from: "{{steps.preprocess.outputs.artifacts.out}}"
+                path: "{{workflow.parameters.preprocess-out-dir}}"
             parameters:
               - name: script
                 value: train.py
+              - name: out-dir
+                value: "{{workflow.parameters.model-out-dir}}"
               - name: cli-args
                 value: >-
                   --preprocess-dir {{workflow.parameters.preprocess-out-dir}}
@@ -109,23 +119,31 @@ spec:
                   --run-name {{workflow.parameters.train-run-name}}
 
       - - name: evaluate
-          template: run-script
+          template: run-script-with-output-dir
           arguments:
             artifacts:
               - name: dataset
                 from: "{{steps.fetch-data.outputs.artifacts.dataset}}"
+              - name: input-preprocess
+                from: "{{steps.preprocess.outputs.artifacts.out}}"
+                path: "{{workflow.parameters.preprocess-out-dir}}"
+              - name: input-model
+                from: "{{steps.train.outputs.artifacts.out}}"
+                path: "{{workflow.parameters.model-out-dir}}"
             parameters:
               - name: script
                 value: evaluation.py
+              - name: out-dir
+                value: "{{workflow.parameters.eval-out-dir}}"
               - name: cli-args
                 value: >-
                   --preprocess-dir {{workflow.parameters.preprocess-out-dir}}
                   --model-path {{workflow.parameters.model-out-dir}}/model.joblib
                   --out-dir {{workflow.parameters.eval-out-dir}}
 
-  # ----------------------
-  # Fetch step (MinIO S3 -> local file)
-  # ----------------------
+  # =========================================================
+  # Fetch step (MinIO S3 -> local file) + output dataset artifact
+  # =========================================================
   - name: fetch-from-minio
     inputs:
       parameters:
@@ -203,14 +221,15 @@ spec:
         - name: dataset
           path: "{{inputs.parameters.local-data-path}}"
 
-  # ----------------------
-  # Base script runner (unchanged endpoints)
-  # ----------------------
-  - name: run-script
+  # =========================================================
+  # Script runner that ALSO returns an output directory as artifact
+  # =========================================================
+  - name: run-script-with-output-dir
     inputs:
       parameters:
         - name: script
         - name: cli-args
+        - name: out-dir
       artifacts:
         - name: dataset
           path: "{{workflow.parameters.local-data-path}}"
@@ -218,7 +237,12 @@ spec:
       image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
       command: ["bash", "-c"]
       args:
-        - python {{inputs.parameters.script}} {{inputs.parameters.cli-args}}
+        - |
+          set -euo pipefail
+          python {{inputs.parameters.script}} {{inputs.parameters.cli-args}}
+          # Helpful listing for debugging (optional)
+          echo "[INFO] Contents of {{inputs.parameters.out-dir}}:"
+          ls -la "{{inputs.parameters.out-dir}}" || true
       envFrom:
         - configMapRef:
             name: mlops-runtime-config
@@ -243,3 +267,8 @@ spec:
             secretKeyRef:
               name: postgres-admin
               key: postgres-password
+
+    outputs:
+      artifacts:
+        - name: out
+          path: "{{inputs.parameters.out-dir}}"
