@@ -18,7 +18,7 @@ spec:
       - name: filename
         value: "weatherAUS.csv"
 
-      # local paths inside container
+      # local paths inside container (used by scripts)
       - name: local-data-path
         value: "/tmp/data/weatherAUS.csv"
 
@@ -179,6 +179,7 @@ spec:
             secretKeyRef:
               name: minio
               key: root-password
+
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -201,10 +202,11 @@ spec:
     outputs:
       artifacts:
         - name: dataset
-          path: "{{inputs.parameters.local-data-path}}"
+          path: /tmp/data/weatherAUS.csv
 
   # ----------------------
-  # Base script runner (unchanged endpoints)
+  # Base script runner
+  # - Receives dataset artifact and ensures it's present at /tmp/data/weatherAUS.csv
   # ----------------------
   - name: run-script
     inputs:
@@ -213,12 +215,18 @@ spec:
         - name: cli-args
       artifacts:
         - name: dataset
-          path: "{{workflow.parameters.local-data-path}}"
+          path: /tmp/data/weatherAUS.csv
     container:
       image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
       command: ["bash", "-c"]
       args:
-        - python {{inputs.parameters.script}} {{inputs.parameters.cli-args}}
+        - |
+          set -euo pipefail
+          echo "[DEBUG] listing /tmp and /tmp/data"
+          ls -lah /tmp || true
+          ls -lah /tmp/data || true
+          test -f "/tmp/data/weatherAUS.csv" && echo "[DEBUG] dataset exists" || (echo "[DEBUG] dataset missing" && exit 1)
+          python {{inputs.parameters.script}} {{inputs.parameters.cli-args}}
       envFrom:
         - configMapRef:
             name: mlops-runtime-config
