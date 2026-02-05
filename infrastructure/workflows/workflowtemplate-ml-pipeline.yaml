@@ -133,7 +133,7 @@ spec:
         - name: filename
         - name: local-data-path
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.5
       command: ["bash", "-c"]
       args:
         - |
@@ -205,7 +205,7 @@ spec:
         - name: dataset
           path: "{{workflow.parameters.local-data-path}}"
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.5
       command: ["bash", "-c"]
       args:
         - |
@@ -249,7 +249,7 @@ spec:
         - name: dataset
           path: "{{workflow.parameters.local-data-path}}"
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.5
       command: ["bash", "-c"]
       args:
         - |
@@ -297,7 +297,7 @@ spec:
         - name: preprocess_art
           path: "{{workflow.parameters.preprocess-out-dir}}"
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.5
       command: ["bash", "-c"]
       args:
         - |
@@ -359,7 +359,7 @@ spec:
         - name: model_art
           path: "{{workflow.parameters.model-out-dir}}"
     container:
-      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.4
+      image: ghcr.io/jbderleuchtturm/ml-weather-pipeline:0.5
       command: ["bash", "-c"]
       args:
         - |
