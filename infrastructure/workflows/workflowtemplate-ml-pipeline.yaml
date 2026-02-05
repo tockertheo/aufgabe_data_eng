@@ -172,6 +172,15 @@ spec:
             secretKeyRef:
               name: postgres-admin
               key: postgres-user
+
+        - name: AWS_ENDPOINT_URL
+          value: http://minio.data-storage.svc.cluster.local:9000
+        - name: AWS_DEFAULT_REGION
+          value: us-east-1
+        - name: AWS_S3_ADDRESSING_STYLE
+          value: path
+
+        
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
