@@ -302,12 +302,25 @@ spec:
       args:
         - |
           set -euo pipefail
+
+          # --- compat: some scripts expect relative "artifacts/..."
+          mkdir -p /app/artifacts
+          mkdir -p artifacts
+          ln -sfn /app/artifacts/preprocess artifacts/preprocess
+
+          # (optional debug)
+          echo "[DEBUG] preprocess-dir={{inputs.parameters.preprocess-dir}}"
+          ls -la /app/artifacts/preprocess || true
+          ls -la artifacts/preprocess || true
+
           python train.py \
             --preprocess-dir {{inputs.parameters.preprocess-dir}} \
             --out-dir {{inputs.parameters.out-dir}} \
             --experiment {{inputs.parameters.experiment}} \
             --run-name {{inputs.parameters.run-name}}
+
           ls -la {{inputs.parameters.out-dir}} || true
+
       envFrom:
         - configMapRef:
             name: mlops-runtime-config
@@ -351,11 +364,20 @@ spec:
       args:
         - |
           set -euo pipefail
+
+          # --- compat: scripts may expect relative "artifacts/..."
+          mkdir -p /app/artifacts
+          mkdir -p artifacts
+          ln -sfn /app/artifacts/preprocess artifacts/preprocess
+          ln -sfn /app/artifacts/model artifacts/model
+
           python evaluation.py \
             --preprocess-dir {{inputs.parameters.preprocess-dir}} \
             --model-path {{inputs.parameters.model-path}} \
             --out-dir {{inputs.parameters.out-dir}}
+
           ls -la {{inputs.parameters.out-dir}} || true
+
       envFrom:
         - configMapRef:
             name: mlops-runtime-config
